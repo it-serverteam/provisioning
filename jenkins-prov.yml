@@ -1,0 +1,66 @@
+---
+#This is the final version of cx-provisioning script NE Project October 22 2020.
+#Developed by Dexter and Zak :) to automate the process of provisioning.
+- hosts: "{{hosts_prompt}}"
+  gather_facts: no
+
+  vars_prompt:
+   - name: "hosts_prompt" ## Host where playbook about to play
+     prompt: "Enter the Host or Host group need to run with this Playbook"
+     private: no
+
+   - name: "disk_name"
+     prompt: "Disk used for creating partition. eg(/dev/vda,/dev/vdb)"
+     private: no
+
+  tasks:
+
+  - name: partition new disk
+    shell: /bin/echo -e "\nn\np\n3\n\n\nt\n\n8e\nw" | fdisk "{{ disk_name }}"
+    failed_when: false
+    register: partchk
+
+  - debug: msg="{{ partchk.stdout }}"
+ 
+  - name: Execute partprobe to reflect fdisk task...
+    shell: /usr/sbin/partprobe /dev/sdb
+    register: prbchk
+
+  - debug: msg="{{ prbchk.stdout }}"
+
+  - name: Create physical volume /dev/sdb1
+    shell: pvcreate /dev/sdb1
+
+  - name: Extend centos volume group
+    shell: vgextend centos /dev/sdb1
+
+  - name: Create new logical volume cx01enc-01
+    shell: lvcreate -L +800G -n cx01enc-01 centos
+ 
+  - name: Install rsync
+    yum:
+      name: rsync
+      state: present   
+
+  - name: Install CRYPTSETUP
+    yum:
+      name: cryptsetup
+      state: present
+ 
+  - name: Install bind-utils
+    yum:
+      name: bind-utils
+      state: present
+
+  - name: Restarting the servers...
+    shell: "sleep 5 && reboot"
+    async: 1
+    poll: 0
+ 
+  - name: Wait for the reboot to complete...
+    wait_for_connection:
+      connect_timeout: 20
+      sleep: 5
+      delay: 5
+      timeout: 300
+
