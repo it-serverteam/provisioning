@@ -1,6 +1,7 @@
 ---
 #This is the final version of cx-provisioning script NE Project October 22 2020.
 #Developed by Dexter and Zak :) to automate the process of provisioning.
+#Added to show changes
 - hosts: "{{hosts_prompt}}"
   gather_facts: no
 
